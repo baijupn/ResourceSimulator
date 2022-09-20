@@ -55,6 +55,10 @@ namespace ResourceSimulator
                 cpuUtil = getFloatValFromFile("cpuUtil.txt");
                 log.LogInformation($"current cpu util: {cpuUtil}");
                 cpuUtil = cpuUtil / ((float)resourceCount / oldResourceCount);
+                if (cpuUtil >= 95.0)
+                {
+                    cpuUtil = 95.0;
+                }
             }
                         
             writeIntValToFile("resourceCount.txt", resourceCount);
