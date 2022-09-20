@@ -91,6 +91,69 @@ namespace ResourceSimulator
             File.WriteAllText(fullPath, (++persistedCount).ToString());
             return persistedCount;
         }
+    }
 
+    public static class CreateSlice
+    {
+        [FunctionName("create-slice")]
+        public static async Task<IActionResult> Run(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
+            ILogger log)
+        {
+            var sliceCount = CreateTheSlice("slice.txt");
+            log.LogInformation($"Create Slice: Current Slice Count is {sliceCount}");
+            return (ActionResult)new OkObjectResult("New Slice Created.");
+        }
+        private static int CreateTheSlice(string fileName)
+        {
+            var folder = Environment.ExpandEnvironmentVariables(@"%HOME%\data\MyFunctionAppData");
+            var fullPath = Path.Combine(folder, fileName);
+            Directory.CreateDirectory(folder); // noop if it already exists
+            int sliceCount = 0;
+            if (File.Exists(fullPath))
+            {
+                sliceCount = int.Parse(File.ReadAllText(fullPath));
+            }
+            File.WriteAllText(fullPath, (++sliceCount).ToString());
+
+            return sliceCount;
+        }
+    }
+    public static class DeleteSlice
+    {
+        [FunctionName("delete-slice")]
+        public static async Task<IActionResult> Run(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "delete", "delete", Route = null)] HttpRequest req,
+            ILogger log)
+        {
+            var deleted = DeleteTheSlice("slice.txt");
+            if (deleted)
+            {
+                log.LogInformation("Delete Slice: Slice Deleted.");
+                return (ActionResult)new OkObjectResult("Slice Deleted.");
+            }
+            else
+            {
+                log.LogInformation("Delete Slice: No Slice Deleted.");
+                return (ActionResult)new OkObjectResult("No Slice Deleted.");
+            }
+        }
+        private static bool DeleteTheSlice(string fileName)
+        {
+            var folder = Environment.ExpandEnvironmentVariables(@"%HOME%\data\MyFunctionAppData");
+            var fullPath = Path.Combine(folder, fileName);
+            Directory.CreateDirectory(folder); // noop if it already exists
+            int sliceCount = 0;
+            if (File.Exists(fullPath))
+            {
+                sliceCount = int.Parse(File.ReadAllText(fullPath));
+                if (sliceCount > 0)
+                {
+                    File.WriteAllText(fullPath, (--sliceCount).ToString());
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 }
