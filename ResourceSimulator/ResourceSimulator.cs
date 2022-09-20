@@ -192,6 +192,71 @@ namespace ResourceSimulator
     }
 
     // Local:
+    // curl -X POST http://localhost:7143/api/get-resource -d '{}'
+    // In Azure:
+    // curl -X POST https://resourcesimulator20220918231716.azurewebsites.net/api/get-resource -d '{}'
+    public static class GetResource
+    {
+        [FunctionName("get-resource")]
+        public static async Task<IActionResult> Run(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
+            ILogger log)
+        {
+            log.LogInformation("Get Resource received.");
+            var resourceCount = getIntValFromFile("resourceCount.txt");
+            
+            return (ActionResult)new OkObjectResult($"ResourceSimulator count:  {resourceCount}");
+
+        }
+
+        private static int getIntValFromFile(string fileName)
+        {
+            var folder = Environment.ExpandEnvironmentVariables(@"%HOME%\data\MyFunctionAppData");
+            var fullPath = Path.Combine(folder, fileName);
+            Directory.CreateDirectory(folder); // noop if it already exists
+            var intVal = 0;
+            if (File.Exists(fullPath))
+            {
+                intVal = int.Parse(File.ReadAllText(fullPath));
+            }
+
+            return intVal;
+        }
+
+        private static void writeIntValToFile(string fileName, int intVal)
+        {
+            var folder = Environment.ExpandEnvironmentVariables(@"%HOME%\data\MyFunctionAppData");
+            var fullPath = Path.Combine(folder, fileName);
+            Directory.CreateDirectory(folder); // noop if it already exists
+
+            File.WriteAllText(fullPath, (intVal).ToString());
+        }
+
+        private static double getFloatValFromFile(string fileName)
+        {
+            var folder = Environment.ExpandEnvironmentVariables(@"%HOME%\data\MyFunctionAppData");
+            var fullPath = Path.Combine(folder, fileName);
+            Directory.CreateDirectory(folder); // noop if it already exists
+            var floatVal = 0.0;
+            if (File.Exists(fullPath))
+            {
+                floatVal = float.Parse(File.ReadAllText(fullPath));
+            }
+
+            return floatVal;
+        }
+
+        private static void writeFloatValToFile(string fileName, double floatVal)
+        {
+            var folder = Environment.ExpandEnvironmentVariables(@"%HOME%\data\MyFunctionAppData");
+            var fullPath = Path.Combine(folder, fileName);
+            Directory.CreateDirectory(folder); // noop if it already exists
+
+            File.WriteAllText(fullPath, (floatVal).ToString());
+        }
+    }
+
+    // Local:
     // curl -X DELETE  http://localhost:7143/api/delete-resource
     // In Azure:
     // curl -X DELETE  https://resourcesimulator20220918231716.azurewebsites.net/api/delete-resource
@@ -447,7 +512,7 @@ namespace ResourceSimulator
 
             //string uri =  "http://localhost:7143/api/test-create-slice";
             string uri = "https://nssmf.azurewebsites.net/subscriptions/ecd77763-10fa-495b-963c-788721bde427/resourceGroups/TestingRG/nssmfs/myNssmf/ObjectManagement/v1/SliceProfiles";
-            
+
             //POST the object to the specified URI 
             var response = await client.PostAsync(uri, new StringContent(content));
 
