@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
@@ -13,21 +14,6 @@ using Newtonsoft.Json;
 
 namespace ResourceSimulator
 {
-    public class Slice
-    {
-        public int ResourceCount { get; }
-    }
-
-    public class Data
-    {
-        public string Timestamp;
-        public int Utilization;
-        public int SuccessRate;
-        public string Label;
-    }
-    
-//    static MemoryCache memoryCache = MemoryCache.Default;
-
     // Local:
     // curl -X POST http://localhost:7143/api/create-resource -d '{}'
     // In Azure:
@@ -59,16 +45,6 @@ namespace ResourceSimulator
             return (ActionResult)new OkObjectResult("Delete Resource processed.");
         }
     }
-/*
-    public class TimeTrigger
-    {
-        [FunctionName("time-trigger")]
-        public static void Run([TimerTrigger("0 * /1 * * * *")] TimerInfo myTimer, ILogger log)
-        {
-            log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
-        }
-    }
-*/
     public class TimeTrigger
     {
         [FunctionName("time-trigger")]
@@ -93,6 +69,10 @@ namespace ResourceSimulator
         }
     }
 
+    // Local:
+    // curl -X POST http://localhost:7143/api/create-slice -d '{}'
+    // In Azure:
+    // curl -X POST https://resourcesimulator20220918231716.azurewebsites.net/api/create-slice -d '{}'
     public static class CreateSlice
     {
         [FunctionName("create-slice")]
@@ -119,6 +99,11 @@ namespace ResourceSimulator
             return sliceCount;
         }
     }
+
+    // Local:
+    // curl -X DELETE  http://localhost:7143/api/delete-slice
+    // In Azure:
+    // curl -X DELETE  https://resourcesimulator20220918231716.azurewebsites.net/api/delete-slice
     public static class DeleteSlice
     {
         [FunctionName("delete-slice")]
