@@ -8,6 +8,7 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+//using System.Runtime.Caching;
 
 
 namespace ResourceSimulator
@@ -24,6 +25,8 @@ namespace ResourceSimulator
         public int SuccessRate;
         public string Label;
     }
+    
+//    static MemoryCache memoryCache = MemoryCache.Default;
 
     // Local:
     // curl -X POST http://localhost:7143/api/create-resource -d '{}'
@@ -56,13 +59,38 @@ namespace ResourceSimulator
             return (ActionResult)new OkObjectResult("Delete Resource processed.");
         }
     }
-
+/*
     public class TimeTrigger
     {
-        [FunctionName("TimeTrigger")]
-        public void Run([TimerTrigger("0 */1 * * * *")] TimerInfo myTimer, ILogger log)
+        [FunctionName("time-trigger")]
+        public static void Run([TimerTrigger("0 * /1 * * * *")] TimerInfo myTimer, ILogger log)
         {
             log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
         }
+    }
+*/
+    public class TimeTrigger
+    {
+        [FunctionName("time-trigger")]
+        public void Run([TimerTrigger("0 */1 * * * *")] TimerInfo myTimer, ILogger log)
+        {
+            log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
+            var persistedCount = IncrementInvocationCountFile("invocations.txt");
+            log.LogInformation($"Webhook triggered {persistedCount}");
+        }
+        private static int IncrementInvocationCountFile(string fileName)
+        {
+            var folder = Environment.ExpandEnvironmentVariables(@"%HOME%\data\MyFunctionAppData");
+            var fullPath = Path.Combine(folder, fileName);
+            Directory.CreateDirectory(folder); // noop if it already exists
+            var persistedCount = 0;
+            if (File.Exists(fullPath))
+            {
+                persistedCount = int.Parse(File.ReadAllText(fullPath));
+            }
+            File.WriteAllText(fullPath, (++persistedCount).ToString());
+            return persistedCount;
+        }
+
     }
 }
