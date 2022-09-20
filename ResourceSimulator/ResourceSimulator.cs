@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.Collections.Generic;
+using System.Web.Http;
 //using System.Runtime.Caching;
 
 
@@ -19,7 +20,7 @@ namespace ResourceSimulator
     // curl -X POST http://localhost:7143/api/create-resource -d '{}'
     // In Azure:
     // curl -X POST https://resourcesimulator20220918231716.azurewebsites.net/api/create-resource -d '{}'
-     // Local:
+    // Local:
     // curl -X POST http://localhost:7143/api/create-resource -d '{}'
     // In Azure:
     // curl -X POST https://resourcesimulator20220918231716.azurewebsites.net/api/create-resource -d '{}'
@@ -32,7 +33,7 @@ namespace ResourceSimulator
         {
             log.LogInformation("Create Resource processed.");
             var resourceCount = getIntValFromFile("resourceCount.txt");
-            
+
             log.LogInformation($"current resource count: {resourceCount}");
             if (resourceCount >= 15)
             {
@@ -40,7 +41,7 @@ namespace ResourceSimulator
                 return (ActionResult)new InternalServerErrorResult();
             }
             var cpuUtil = 0.0;
-            
+
             if (resourceCount == 0) // first time
             {
                 log.LogInformation($"first time invocation. setting resourceCount to 5.");
@@ -61,14 +62,14 @@ namespace ResourceSimulator
                     cpuUtil = 95.0;
                 }
             }
-                        
+
             writeIntValToFile("resourceCount.txt", resourceCount);
             writeFloatValToFile("cpuUtil.txt", cpuUtil);
             log.LogInformation($"new resource count: {resourceCount}");
             log.LogInformation($"New cpu util: {cpuUtil}");
             return (ActionResult)new OkObjectResult("Create Resource processed.");
 
-            
+
         }
 
         private static int getIntValFromFile(string fileName)
@@ -133,7 +134,7 @@ namespace ResourceSimulator
             var resourceCount = 0;
             var cpuUtil = 0.0;
             var operVal = 1;
-            
+
 
             writeIntValToFile("resourceCount.txt", resourceCount);
             writeFloatValToFile("cpuUtil.txt", cpuUtil);
@@ -299,22 +300,22 @@ namespace ResourceSimulator
                 return;
 
             }
-            
+
             log.LogInformation($"current cpu util: {cpuUtil}");
-           
-            if (resourceCount >= 15 && operVal == 1 && 
+
+            if (resourceCount >= 15 && operVal == 1 &&
                 (cpuUtil > 80.0))
             {
                 operVal = 0;
                 writeIntValToFile("operVal.txt", operVal);
             }
-            if (resourceCount <= 5 && operVal == 0 && 
+            if (resourceCount <= 5 && operVal == 0 &&
                 (cpuUtil <= 30.0))
             {
                 operVal = 1;
                 writeIntValToFile("operVal.txt", operVal);
             }
-            
+
             if (operVal == 1 &&
                 cpuUtil < 95.0)
             {
@@ -353,7 +354,7 @@ namespace ResourceSimulator
             {
                 intVal = int.Parse(File.ReadAllText(fullPath));
             }
-            
+
             return intVal;
         }
 
@@ -419,7 +420,7 @@ namespace ResourceSimulator
             if (File.Exists(fullPath))
             {
                 sliceCount = int.Parse(File.ReadAllText(fullPath));
-                
+
             }
             ++sliceCount;
             string sliceString = "Slice-" + sliceCount.ToString();
@@ -444,12 +445,15 @@ namespace ResourceSimulator
                $"\"delayTolerance\":{{\"servAttrCom\":{{}}}},\"positioning\":{{\"servAttrCom\":{{}}}},\"termDensity\":{{\"servAttrCom\":{{}}}}," +
                $"\"dLDeterministicComm\":{{\"servAttrCom\":{{}}}},\"uLDeterministicComm\":{{\"servAttrCom\":{{}}}}}}}}";
 
+            //string uri =  "http://localhost:7143/api/test-create-slice";
+            string uri = "https://nssmf.azurewebsites.net/subscriptions/ecd77763-10fa-495b-963c-788721bde427/resourceGroups/TestingRG/nssmfs/myNssmf/ObjectManagement/v1/SliceProfiles";
+            
             //POST the object to the specified URI 
-            var response = await client.PostAsync("http://localhost:7143/api/test-create-slice", new StringContent(content));
+            var response = await client.PostAsync(uri, new StringContent(content));
 
             //Read back the answer from server
             var responseString = await response.Content.ReadAsStringAsync();
-            
+
             Console.WriteLine(responseString);
 
             File.WriteAllText(fullPath, (sliceCount).ToString());
@@ -496,9 +500,11 @@ namespace ResourceSimulator
                 if (sliceCount > 0)
                 {
                     string sliceString = "Slice-" + sliceCount.ToString();
+                    //string uri = "http://localhost:7143/api/test-create-slice";
+                    string uri = "https://nssmf.azurewebsites.net/subscriptions/ecd77763-10fa-495b-963c-788721bde427/resourceGroups/TestingRG/nssmfs/myNssmf/ObjectManagement/v1/SliceProfiles/";
 
                     //Delete the object with specified URI 
-                    var response = await client.DeleteAsync("http://localhost:7143/api/test-delete-slice/" + sliceString);
+                    var response = await client.DeleteAsync(uri + sliceString);
 
                     //Read back the answer from server
                     var responseString = await response.Content.ReadAsStringAsync();
