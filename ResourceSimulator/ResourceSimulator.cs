@@ -421,10 +421,13 @@ namespace ResourceSimulator
         private static async Task<int> SendMetrics(double cpuUtil, double memUtil, int sessEstRejectsOvld, int sessionEstFailFpTimeout)
         {
             Console.WriteLine("Sending metric data");
+            long timeVal = getNextTimeVal();
+            DateTimeOffset dateTimeOffSet = DateTimeOffset.FromUnixTimeSeconds(timeVal);
+            DateTime datTime = dateTimeOffSet.DateTime;
             // send metrics to AI/ML component
-            string metricsData = $"{{\r\n    \"data\": [\r\n        {{\r\n            \"Date\": \"{DateTime.Now}\",\r\n            \"UPF-CPU\": {cpuUtil},\r\n            \"UPF-Mem\": {memUtil},\r\n            \"UPF_SessionEstablishmentRejects_Overload\": {sessEstRejectsOvld},\r\n            \"UPF_SessionEstablishmentFailed_Fastpath_timeout\": {sessionEstFailFpTimeout}\r\n        }}\r\n    ]\r\n}}";
+            string metricsData = $"{{\r\n    \"data\": [\r\n        {{\r\n            \"Date\": \"{datTime}\",\r\n            \"UPF-CPU\": {cpuUtil},\r\n            \"UPF-Mem\": {memUtil},\r\n            \"UPF_SessionEstablishmentRejects_Overload\": {sessEstRejectsOvld},\r\n            \"UPF_SessionEstablishmentFailed_Fastpath_timeout\": {sessionEstFailFpTimeout}\r\n        }}\r\n    ]\r\n}}";
             Console.WriteLine(metricsData);
-            string uri =  "http://localhost:7202/api/test-aiml";
+            string uri = "http://localhost:7020/api/test-aiml";
             //string uri = "https://nssmf.azurewebsites.net/subscriptions/ecd77763-10fa-495b-963c-788721bde427/resourceGroups/TestingRG/nssmfs/myNssmf/ObjectManagement/v1/SliceProfiles";
 
             //POST the object to the specified URI 
@@ -453,13 +456,13 @@ namespace ResourceSimulator
             {
                 Console.WriteLine("Received error response");
             }
-            
-            return ret;          
+
+            return ret;
         }
 
         private static async Task<int> CreateTheSlice()
         {
-            string uri = "http://localhost:7202/api/create-slice";
+            string uri = "http://localhost:7020/api/create-slice";
             //string uri = "https://nssmf.azurewebsites.net/subscriptions/ecd77763-10fa-495b-963c-788721bde427/resourceGroups/TestingRG/nssmfs/myNssmf/ObjectManagement/v1/SliceProfiles";
             //POST the object to the specified URI 
             var response = await client.PostAsync(uri, new StringContent("{}"));
@@ -473,7 +476,7 @@ namespace ResourceSimulator
 
         private static async Task<int> DeleteTheSlice()
         {
-            string uri = "http://localhost:7202/api/delete-slice";
+            string uri = "http://localhost:7020/api/delete-slice";
             //string uri = "https://nssmf.azurewebsites.net/subscriptions/ecd77763-10fa-495b-963c-788721bde427/resourceGroups/TestingRG/nssmfs/myNssmf/ObjectManagement/v1/SliceProfiles";
             //POST the object to the specified URI 
             var response = await client.DeleteAsync(uri);
@@ -485,6 +488,32 @@ namespace ResourceSimulator
             return 1;
         }
 
+        private static long getNextTimeVal()
+        {
+            var folder = Environment.ExpandEnvironmentVariables(@"%HOME%\data\MyFunctionAppData");
+            var fullPath = Path.Combine(folder, "timeVal.txt");
+            Directory.CreateDirectory(folder); // noop if it already exists
+            long timeVal = 0;
+            if (File.Exists(fullPath))
+            {
+                timeVal = long.Parse(File.ReadAllText(fullPath));
+            }
+            if (timeVal == 0)
+            {
+                DateTimeOffset now = DateTimeOffset.UtcNow;
+                timeVal = now.ToUnixTimeSeconds();
+                Console.WriteLine("Current epoch time:");
+                Console.WriteLine(timeVal);
+            }
+            else
+            {
+                // increment value by 15 mins (900s)
+                timeVal += 900;
+            }
+            // write new value back.
+            File.WriteAllText(fullPath, (timeVal).ToString());
+            return timeVal;
+        }
 
         private static int getIntValFromFile(string fileName)
         {
