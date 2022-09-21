@@ -425,7 +425,8 @@ namespace ResourceSimulator
             DateTimeOffset dateTimeOffSet = DateTimeOffset.FromUnixTimeSeconds(timeVal);
             DateTime datTime = dateTimeOffSet.DateTime;
             // send metrics to AI/ML component
-            string metricsData = $"{{\r\n    \"data\": [\r\n        {{\r\n            \"Date\": \"{datTime}\",\r\n            \"UPF-CPU\": {cpuUtil},\r\n            \"UPF-Mem\": {memUtil},\r\n            \"UPF_SessionEstablishmentRejects_Overload\": {sessEstRejectsOvld},\r\n            \"UPF_SessionEstablishmentFailed_Fastpath_timeout\": {sessionEstFailFpTimeout}\r\n        }}\r\n    ]\r\n}}";
+            //string metricsData = $"{{\r\n    \"data\": [\r\n        {{\r\n            \"Date\": \"{datTime}\",\r\n            \"UPF-CPU\": {cpuUtil},\r\n            \"UPF-Mem\": {memUtil},\r\n            \"UPF_SessionEstablishmentRejects_Overload\": {sessEstRejectsOvld},\r\n            \"UPF_SessionEstablishmentFailed_Fastpath_timeout\": {sessionEstFailFpTimeout}\r\n        }}\r\n    ]\r\n}}";
+            string metricsData = $"{{\r\n    \"data\": [\r\n        {{\r\n            \"UPF-CPU\": {cpuUtil},\r\n            \"UPF-Mem\": {memUtil},\r\n            \"UPF_SessionEstablishmentRejects_Overload\": {sessEstRejectsOvld},\r\n            \"UPF_SessionEstablishmentFailed_Fastpath_timeout\": {sessionEstFailFpTimeout}\r\n        }}\r\n    ]\r\n}}";
             Console.WriteLine(metricsData);
             string uri = "http://localhost:7020/api/test-aiml";
             //string uri = "https://nssmf.azurewebsites.net/subscriptions/ecd77763-10fa-495b-963c-788721bde427/resourceGroups/TestingRG/nssmfs/myNssmf/ObjectManagement/v1/SliceProfiles";
