@@ -35,7 +35,7 @@ namespace ResourceSimulator
             var resourceCount = getIntValFromFile("resourceCount.txt");
 
             log.LogInformation($"current resource count: {resourceCount}");
-            if (resourceCount >= 15)
+            if (resourceCount >= 50)
             {
                 log.LogError($"resource count limit reached. No new resources added");
                 return (ActionResult)new InternalServerErrorResult();
@@ -270,10 +270,10 @@ namespace ResourceSimulator
             log.LogInformation("Delete Resource processed.");
             var resourceCount = getIntValFromFile("resourceCount.txt");
             log.LogInformation($"current resource count: {resourceCount}");
-            if (resourceCount <= 5)
+            if (resourceCount <= 0)
             {
-                log.LogError($"resource count limit reached. No resources deleted");
-                return (ActionResult)new OkObjectResult("Delete Resource processed.");
+                log.LogError($"No resources available");
+                return (ActionResult)new InternalServerErrorResult();
             }
             var oldResourceCount = resourceCount;
             resourceCount -= 5;
