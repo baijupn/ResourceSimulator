@@ -346,20 +346,13 @@ namespace ResourceSimulator
         {
             log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
             var resourceCount = getIntValFromFile("resourceCount.txt");
-            log.LogInformation($"Webhook triggered");
+            log.LogInformation("Timer triggered");
             log.LogInformation($"current resource count: {resourceCount}");
             var cpuUtil = getFloatValFromFile("cpuUtil.txt");
             var operVal = getIntValFromFile("operVal.txt");
             log.LogInformation($"current operation: {operVal}");
             if (resourceCount == 0) // first time
             {
-                //log.LogInformation($"first time invocation. setting resourceCount to 5.");
-                //resourceCount = 5;
-                //cpuUtil = 30.0;
-                //writeIntValToFile("resourceCount.txt", resourceCount);
-                //log.LogInformation($"New resource count: {resourceCount}");
-                //writeFloatValToFile("cpuUtil.txt", cpuUtil);
-                //log.LogInformation($"New cpu util: {cpuUtil}");
                 operVal = 1;
                 writeIntValToFile("operVal.txt", operVal);
                 return;
@@ -393,21 +386,105 @@ namespace ResourceSimulator
             }
             writeFloatValToFile("cpuUtil.txt", cpuUtil);
             log.LogInformation($"New cpu util: {cpuUtil}");
+            Random rand = new Random();
+            var memUtil = cpuUtil / 2 + rand.NextDouble() * 4;
+            var sessEstRejectsOvld = 0;
+            if (cpuUtil > 70.0)
+            {
+                sessEstRejectsOvld = (int)((cpuUtil - 70.0) * 100);
+            }
+            var sessionEstFailFpTimeout = 0;
+            if (cpuUtil > 60.0)
+            {
+                sessionEstFailFpTimeout = (int)((cpuUtil - 60.0) * 33);
+            }
+
+            var ret = SendMetrics(cpuUtil, memUtil, sessEstRejectsOvld, sessionEstFailFpTimeout);
+
+            if (ret.Result == 1)
+            {
+                log.LogInformation("sending create-slice request");
+                var cRet = CreateTheSlice();
+                
+            }
+            else if (ret.Result == 2)
+            {
+                log.LogInformation("sending create-slice request");
+                var dRet = DeleteTheSlice();
+            }
+
         }
 
-        private static int IncrementInvocationCountFile(string fileName)
+        //HttpClient should be instancied once and not be disposed 
+        private static readonly HttpClient client = new HttpClient();
+
+        private static async Task<int> SendMetrics(double cpuUtil, double memUtil, int sessEstRejectsOvld, int sessionEstFailFpTimeout)
         {
-            var folder = Environment.ExpandEnvironmentVariables(@"%HOME%\data\MyFunctionAppData");
-            var fullPath = Path.Combine(folder, fileName);
-            Directory.CreateDirectory(folder); // noop if it already exists
-            var persistedCount = 0;
-            if (File.Exists(fullPath))
+            Console.WriteLine("Sending metric data");
+            // send metrics to AI/ML component
+            string metricsData = $"{{\r\n    \"data\": [\r\n        {{\r\n            \"Date\": \"{DateTime.Now}\",\r\n            \"UPF-CPU\": {cpuUtil},\r\n            \"UPF-Mem\": {memUtil},\r\n            \"UPF_SessionEstablishmentRejects_Overload\": {sessEstRejectsOvld},\r\n            \"UPF_SessionEstablishmentFailed_Fastpath_timeout\": {sessionEstFailFpTimeout}\r\n        }}\r\n    ]\r\n}}";
+            Console.WriteLine(metricsData);
+            string uri =  "http://localhost:7202/api/test-aiml";
+            //string uri = "https://nssmf.azurewebsites.net/subscriptions/ecd77763-10fa-495b-963c-788721bde427/resourceGroups/TestingRG/nssmfs/myNssmf/ObjectManagement/v1/SliceProfiles";
+
+            //POST the object to the specified URI 
+            var response = await client.PostAsync(uri, new StringContent(metricsData));
+            var ret = 0;
+            if (response.IsSuccessStatusCode)
             {
-                persistedCount = int.Parse(File.ReadAllText(fullPath));
+                //Read back the answer from server
+                var responseString = await response.Content.ReadAsStringAsync();
+
+                Console.WriteLine("Received suyccess response");
+
+                Console.WriteLine(responseString);
+
+                if (responseString.Contains("Create"))
+                {
+                    ret = 1;
+                }
+                else if (responseString.Contains("Delete"))
+                {
+                    ret = 2;
+                }
+
             }
-            File.WriteAllText(fullPath, (++persistedCount).ToString());
-            return persistedCount;
+            else
+            {
+                Console.WriteLine("Received error response");
+            }
+            
+            return ret;          
         }
+
+        private static async Task<int> CreateTheSlice()
+        {
+            string uri = "http://localhost:7202/api/create-slice";
+            //string uri = "https://nssmf.azurewebsites.net/subscriptions/ecd77763-10fa-495b-963c-788721bde427/resourceGroups/TestingRG/nssmfs/myNssmf/ObjectManagement/v1/SliceProfiles";
+            //POST the object to the specified URI 
+            var response = await client.PostAsync(uri, new StringContent("{}"));
+
+            //Read back the answer from server
+            var responseString = await response.Content.ReadAsStringAsync();
+
+            Console.WriteLine(responseString);
+            return 1;
+        }
+
+        private static async Task<int> DeleteTheSlice()
+        {
+            string uri = "http://localhost:7202/api/delete-slice";
+            //string uri = "https://nssmf.azurewebsites.net/subscriptions/ecd77763-10fa-495b-963c-788721bde427/resourceGroups/TestingRG/nssmfs/myNssmf/ObjectManagement/v1/SliceProfiles";
+            //POST the object to the specified URI 
+            var response = await client.DeleteAsync(uri);
+
+            //Read back the answer from server
+            var responseString = await response.Content.ReadAsStringAsync();
+
+            Console.WriteLine(responseString);
+            return 1;
+        }
+
 
         private static int getIntValFromFile(string fileName)
         {
@@ -455,6 +532,23 @@ namespace ResourceSimulator
             File.WriteAllText(fullPath, (floatVal).ToString());
         }
 
+    }
+    // Local:
+    // curl -X POST http://localhost:7143/api/test-aiml -d '{}'
+    // In Azure:
+    // curl -X POST https://resourcesimulator20220918231716.azurewebsites.net/api/test-aiml -d '{}'
+    public static class TestAiMl
+    {
+        [FunctionName("test-aiml")]
+        public static async Task<IActionResult> Run(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
+            ILogger log)
+        {
+            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            var input = JsonConvert.DeserializeObject(requestBody);
+            log.LogInformation($"Test AI/ML processed. {input}");
+            return (ActionResult)new OkObjectResult("Create");
+        }
     }
 
     // Local:
