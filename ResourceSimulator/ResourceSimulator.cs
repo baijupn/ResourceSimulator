@@ -416,7 +416,9 @@ namespace ResourceSimulator
         }
 
         //HttpClient should be instancied once and not be disposed 
-        private static readonly HttpClient client = new HttpClient();
+        //HttpClient should be instancied once and not be disposed 
+        private static readonly HttpClient clientAiMl = new HttpClient();
+        private static readonly HttpClient clientNssmf = new HttpClient();
 
         private static async Task<int> SendMetrics(double cpuUtil, double memUtil, int sessEstRejectsOvld, int sessionEstFailFpTimeout)
         {
@@ -426,13 +428,25 @@ namespace ResourceSimulator
             DateTime datTime = dateTimeOffSet.DateTime;
             // send metrics to AI/ML component
             //string metricsData = $"{{\r\n    \"data\": [\r\n        {{\r\n            \"Date\": \"{datTime}\",\r\n            \"UPF-CPU\": {cpuUtil},\r\n            \"UPF-Mem\": {memUtil},\r\n            \"UPF_SessionEstablishmentRejects_Overload\": {sessEstRejectsOvld},\r\n            \"UPF_SessionEstablishmentFailed_Fastpath_timeout\": {sessionEstFailFpTimeout}\r\n        }}\r\n    ]\r\n}}";
-            string metricsData = $"{{\r\n    \"data\": [\r\n        {{\r\n            \"UPF-CPU\": {cpuUtil},\r\n            \"UPF-Mem\": {memUtil},\r\n            \"UPF_SessionEstablishmentRejects_Overload\": {sessEstRejectsOvld},\r\n            \"UPF_SessionEstablishmentFailed_Fastpath_timeout\": {sessionEstFailFpTimeout}\r\n        }}\r\n    ]\r\n}}";
-            Console.WriteLine(metricsData);
+            //string metricsData = $"{{\r\n    \"data\": [\r\n        {{\r\n            \"UPF-CPU\": {cpuUtil},\r\n            \"UPF-Mem\": {memUtil},\r\n            \"UPF_SessionEstablishmentRejects_Overload\": {sessEstRejectsOvld},\r\n            \"UPF_SessionEstablishmentFailed_Fastpath_timeout\": {sessionEstFailFpTimeout}\r\n        }}\r\n    ]\r\n}}";
+
+            string metricsJsonData = $"{{\r\n  \"Inputs\": {{\r\n    \"input1\": [\r\n      {{\r\n        \"UPF-CPU\": {cpuUtil},\r\n        \"UPF-Mem\": {memUtil},\r\n        \"UPF_SessionEstablishmentRejects_Overload\": {sessEstRejectsOvld},\r\n        \"UPF_SessionEstablishmentFailed_Fastpath_timeout\": {sessionEstFailFpTimeout}\r\n      }}\r\n    ]\r\n  }},\r\n  \"GlobalParameters\": {{}}\r\n}}";
+            Console.WriteLine(metricsJsonData);
             string uri = "http://localhost:7020/api/test-aiml";
             //string uri = "https://nssmf.azurewebsites.net/subscriptions/ecd77763-10fa-495b-963c-788721bde427/resourceGroups/TestingRG/nssmfs/myNssmf/ObjectManagement/v1/SliceProfiles";
 
+            string authToken = "f9TujjzqyegqBb4m9xfdzo3HDObVOvGb";
+
+            //clientAiMl.DefaultRequestHeaders.Add("Authorization", $"Bearer {authToken}");
+            //clientAiMl.DefaultRequestHeaders.Add("Content-Type", contentTypeValue);
             //POST the object to the specified URI 
-            var response = await client.PostAsync(uri, new StringContent(metricsData));
+            //var response = await clientAiMl.PostAsync(uri, new StringContent(metricsData));
+
+            var request = new HttpRequestMessage(HttpMethod.Post, uri);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
+            request.Content = new StringContent(metricsJsonData, Encoding.UTF8, "application/json");
+            var response = await clientAiMl.SendAsync(request);
+            
             var ret = 0;
             if (response.IsSuccessStatusCode)
             {
@@ -466,7 +480,7 @@ namespace ResourceSimulator
             string uri = "http://localhost:7020/api/create-slice";
             //string uri = "https://nssmf.azurewebsites.net/subscriptions/ecd77763-10fa-495b-963c-788721bde427/resourceGroups/TestingRG/nssmfs/myNssmf/ObjectManagement/v1/SliceProfiles";
             //POST the object to the specified URI 
-            var response = await client.PostAsync(uri, new StringContent("{}"));
+            var response = await clientNssmf.PostAsync(uri, new StringContent("{}"));
 
             //Read back the answer from server
             var responseString = await response.Content.ReadAsStringAsync();
@@ -480,7 +494,7 @@ namespace ResourceSimulator
             string uri = "http://localhost:7020/api/delete-slice";
             //string uri = "https://nssmf.azurewebsites.net/subscriptions/ecd77763-10fa-495b-963c-788721bde427/resourceGroups/TestingRG/nssmfs/myNssmf/ObjectManagement/v1/SliceProfiles";
             //POST the object to the specified URI 
-            var response = await client.DeleteAsync(uri);
+            var response = await clientNssmf.DeleteAsync(uri);
 
             //Read back the answer from server
             var responseString = await response.Content.ReadAsStringAsync();
@@ -574,6 +588,22 @@ namespace ResourceSimulator
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
         {
+            var sb = new StringBuilder();
+
+            var line1 = $"{req.Method} {req.Scheme}://{req.Host}{req.Path} {req.Protocol}";
+            sb.AppendLine(line1);
+
+            foreach (var (key, value) in req.Headers)
+            {
+                var header = $"{key}: {value}";
+                sb.AppendLine(header);
+            }
+            sb.AppendLine();
+            log.LogInformation($"Test AI/ML processed. non-body: {sb}");
+            //using var reader = new StreamReader(req.Body);
+            //var body = await reader.ReadToEndAsync();
+            //if (!string.IsNullOrWhiteSpace(body))
+            //sb.AppendLine(body);
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             var input = JsonConvert.DeserializeObject(requestBody);
             log.LogInformation($"Test AI/ML processed. {input}");
