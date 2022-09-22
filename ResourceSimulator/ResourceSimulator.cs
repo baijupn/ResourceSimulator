@@ -272,7 +272,7 @@ namespace ResourceSimulator
         {
             log.LogInformation("Delete Resource processed.");
             var resourceCount = getIntValFromFile("resourceCount.txt");
-            log.LogInformation($"current resource count: {resourceCount}");
+            log.LogInformation($"Delete resource: current resource count: {resourceCount}");
             if (resourceCount <= 0)
             {
                 log.LogError($"No resources available");
@@ -344,8 +344,8 @@ namespace ResourceSimulator
     public class TimeTrigger
     {
         [FunctionName("time-trigger")]
-        public void Run([TimerTrigger("0 */1 * * * *")] TimerInfo myTimer, ILogger log)
-        //public void Run([TimerTrigger("*/10 * * * * *")] TimerInfo myTimer, ILogger log)
+        //public void Run([TimerTrigger("0 */1 * * * *")] TimerInfo myTimer, ILogger log)
+        public void Run([TimerTrigger("*/10 * * * * *")] TimerInfo myTimer, ILogger log)
         {
             log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
             var resourceCount = getIntValFromFile("resourceCount.txt");
@@ -634,7 +634,7 @@ namespace ResourceSimulator
         {
             var sliceCount = CreateTheSlice("slice.txt", log);
             log.LogInformation($"Create Slice: Current Slice Count is {sliceCount.Result}");
-            return (ActionResult)new OkObjectResult("New Slice Created.");
+            return (ActionResult)new OkObjectResult("Slice Scaled Up.");
         }
 
         //HttpClient should be instancied once and not be disposed 
@@ -705,12 +705,12 @@ namespace ResourceSimulator
             var deleted = DeleteTheSlice("slice.txt", log);
             if (deleted.Result)
             {
-                log.LogInformation("Delete Slice: Slice Deleted.");
+                log.LogInformation("Slice Scaled Down.");
                 return (ActionResult)new OkObjectResult("Slice Deleted.");
             }
             else
             {
-                log.LogInformation("Delete Slice: No Slice Deleted.");
+                log.LogInformation("No Slice Deleted.");
                 return (ActionResult)new OkObjectResult("No Slice Deleted.");
             }
         }
