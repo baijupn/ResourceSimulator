@@ -38,17 +38,13 @@ namespace ResourceSimulator
             var resourceCount = getIntValFromFile("resourceCount.txt");
 
             log.LogInformation($"current resource count: {resourceCount}");
-            if (resourceCount >= 50)
-            {
-                log.LogError($"resource count limit reached. No new resources added");
-                return (ActionResult)new InternalServerErrorResult();
-            }
+
             var cpuUtil = 0.0;
 
             if (resourceCount == 0) // first time
             {
                 log.LogInformation($"first time invocation. setting resourceCount to 5.");
-                resourceCount = 5;
+                resourceCount = 10;
                 cpuUtil = 30.0;
                 int operVal = 1;
                 writeIntValToFile("operVal.txt", operVal);
@@ -56,13 +52,13 @@ namespace ResourceSimulator
             else
             {
                 var oldResourceCount = resourceCount;
-                resourceCount += 5;
+                resourceCount += 10;
                 cpuUtil = getFloatValFromFile("cpuUtil.txt");
                 log.LogInformation($"current cpu util: {cpuUtil}");
                 cpuUtil = cpuUtil / ((float)resourceCount / oldResourceCount);
-                if (cpuUtil >= 95.0)
+                if (cpuUtil >= 90.0)
                 {
-                    cpuUtil = 95.0;
+                    cpuUtil = 90.0;
                 }
             }
 
@@ -280,7 +276,7 @@ namespace ResourceSimulator
                 return (ActionResult)new InternalServerErrorResult();
             }
             var oldResourceCount = resourceCount;
-            resourceCount -= 5;
+            resourceCount -= 10;
             log.LogInformation($"new resource count: {resourceCount}");
             writeIntValToFile("resourceCount.txt", resourceCount);
             var cpuUtil = getFloatValFromFile("cpuUtil.txt");
@@ -347,12 +343,19 @@ namespace ResourceSimulator
     {
         [FunctionName("time-trigger")]
         //public void Run([TimerTrigger("0 */1 * * * *")] TimerInfo myTimer, ILogger log)
-        public void Run([TimerTrigger("*/10 * * * * *")] TimerInfo myTimer, ILogger log)
+        public void Run([TimerTrigger("*/5 * * * * *")] TimerInfo myTimer, ILogger log)
         {
             log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
             var resourceCount = getIntValFromFile("resourceCount.txt");
             log.LogInformation("Timer triggered");
-            log.LogInformation($"current resource count: {resourceCount}");
+            if (resourceCount > 0)
+            {
+                log.LogWarning($"Current Resource Count: {resourceCount / 10}");
+            }
+            else
+            {
+                log.LogWarning("Current Resource Count: 0");
+            }
             var cpuUtil = getFloatValFromFile("cpuUtil.txt");
             var operVal = getIntValFromFile("operVal.txt");
             log.LogInformation($"current operation: {operVal}");
@@ -364,9 +367,9 @@ namespace ResourceSimulator
 
             }
 
-            log.LogInformation($"current cpu util: {cpuUtil}");
+            log.LogWarning($"Current CPU util: {cpuUtil}");
 
-            if (resourceCount >= 15 && operVal == 1 &&
+            if (resourceCount >= 20 && operVal == 1 &&
                 (cpuUtil > 80.0))
             {
                 operVal = 0;
@@ -380,17 +383,17 @@ namespace ResourceSimulator
             }
 
             if (operVal == 1 &&
-                cpuUtil < 95.0)
+                cpuUtil < 80.0)
             {
-                cpuUtil += 5.0;
+                cpuUtil += 20.0;
             }
             else if (operVal == 0 &&
                     cpuUtil > 10.0)
             {
-                cpuUtil -= 5.0;
+                cpuUtil -= 10.0;
             }
             writeFloatValToFile("cpuUtil.txt", cpuUtil);
-            log.LogInformation($"New cpu util: {cpuUtil}");
+            log.LogWarning($"New CPU util: {cpuUtil}");
             Random rand = new Random();
             var memUtil = cpuUtil / 2 + rand.NextDouble() * 4;
             var sessEstRejectsOvld = 0;
@@ -438,7 +441,7 @@ namespace ResourceSimulator
 
             string metricsJsonData = $"{{\r\n  \"Inputs\": {{\r\n    \"input1\": [\r\n      {{\r\n        \"UPF-CPU\": {cpuUtil},\r\n        \"UPF-Mem\": {memUtil},\r\n        \"UPF_SessionEstablishmentRejects_Overload\": {sessEstRejectsOvld},\r\n        \"UPF_SessionEstablishmentFailed_Fastpath_timeout\": {sessionEstFailFpTimeout}\r\n      }}\r\n    ]\r\n  }},\r\n  \"GlobalParameters\": {{}}\r\n}}";
             //Console.WriteLine(metricsJsonData);
-            log.LogInformation($"{metricsJsonData}");
+            log.LogWarning($"Input to AI/ML: {metricsJsonData}");
             //string uri = "http://localhost:7020/api/test-aiml";
             string uri = "http://e937ab94-1c7d-474b-8d3e-586e1a314acb.eastus2.azurecontainer.io/score";
 
@@ -464,7 +467,7 @@ namespace ResourceSimulator
                 log.LogInformation("Received success response");
 
                 //Console.WriteLine(responseString);
-                log.LogInformation($"{responseString}");
+                log.LogWarning($"Response from AI/ML: {responseString}");
 
                 if (responseString.Contains("Create"))
                 {
@@ -496,7 +499,7 @@ namespace ResourceSimulator
             var responseString = await response.Content.ReadAsStringAsync();
 
             //Console.WriteLine(responseString);
-            log.LogInformation($"{responseString}");
+            log.LogWarning($"Response from NSSMF: {responseString}");
             return 1;
         }
 
@@ -511,7 +514,7 @@ namespace ResourceSimulator
             var responseString = await response.Content.ReadAsStringAsync();
 
             //Console.WriteLine(responseString);
-            log.LogInformation($"{responseString}");
+            log.LogWarning($"Response from NSSMF: {responseString}");
             return 1;
         }
 
@@ -636,7 +639,7 @@ namespace ResourceSimulator
         {
             var sliceCount = CreateTheSlice("slice.txt", log);
             log.LogInformation($"Create Slice: Current Slice Count is {sliceCount.Result}");
-            return (ActionResult)new OkObjectResult("Slice Scaled Up.");
+            return (ActionResult)new OkObjectResult("** SLICE SCALED UP. **");
         }
 
         //HttpClient should be instancied once and not be disposed 
@@ -662,7 +665,7 @@ namespace ResourceSimulator
                     $"{{\"plmnId\":{{\"mcc\":\"999\",\"mnc\":\"123\"}},\"snssai\":{{\"sst\":1,\"sd\":\"first\"}}}}]," +
                $"\"cNSliceSubnetProfile\":{{\"dLThptPerSliceSubnet\":{{\"servAttrCom\":{{}}}}," +
                $"\"dLThptPerUE\":{{\"servAttrCom\":{{}}}},\"uLThptPerSliceSubnet\":{{\"servAttrCom\":{{}}}}," +
-               $"\"uLThptPerUE\":{{\"servAttrCom\":{{}}}},\"maxNumberOfPDUSessions\":500000,\"delayTolerance\":{{\"servAttrCom\":{{}}}}," +
+               $"\"uLThptPerUE\":{{\"servAttrCom\":{{}}}},\"maxNumberOfPDUSessions\":100000,\"delayTolerance\":{{\"servAttrCom\":{{}}}}," +
                $"\"synchronicity\":{{}},\"dLDeterministicComm\":{{\"servAttrCom\":{{}}}},\"uLDeterministicComm\":{{\"servAttrCom\":{{}}}}," +
                $"\"nssaaSupport\":{{\"servAttrCom\":{{}}}},\"n6Protection\":{{\"servAttrCom\":{{}}}}}}," +
                $"\"rANSliceSubnetProfile\":{{\"dLThptPerSliceSubnet\":{{\"servAttrCom\":{{}}}}," +
@@ -707,8 +710,7 @@ namespace ResourceSimulator
             var deleted = DeleteTheSlice("slice.txt", log);
             if (deleted.Result)
             {
-                log.LogInformation("Slice Scaled Down.");
-                return (ActionResult)new OkObjectResult("Slice Deleted.");
+                return (ActionResult)new OkObjectResult("** SLICE SCALED DOWN. **");
             }
             else
             {
