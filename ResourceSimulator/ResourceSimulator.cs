@@ -1,6 +1,8 @@
 using System;
 using System.IO;
+using System.Text;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
@@ -11,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Web.Http;
+//using static System.Net.WebRequestMethods;
 //using System.Runtime.Caching;
 
 
@@ -78,9 +81,9 @@ namespace ResourceSimulator
             var fullPath = Path.Combine(folder, fileName);
             Directory.CreateDirectory(folder); // noop if it already exists
             var intVal = 0;
-            if (File.Exists(fullPath))
+            if (System.IO.File.Exists(fullPath))
             {
-                intVal = int.Parse(File.ReadAllText(fullPath));
+                intVal = int.Parse(System.IO.File.ReadAllText(fullPath));
             }
 
             return intVal;
@@ -342,7 +345,7 @@ namespace ResourceSimulator
     {
         [FunctionName("time-trigger")]
         public void Run([TimerTrigger("0 */1 * * * *")] TimerInfo myTimer, ILogger log)
-        //public void Run([TimerTrigger("10 * * * * *")] TimerInfo myTimer, ILogger log)
+        //public void Run([TimerTrigger("*/10 * * * * *")] TimerInfo myTimer, ILogger log)
         {
             log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
             var resourceCount = getIntValFromFile("resourceCount.txt");
@@ -432,8 +435,8 @@ namespace ResourceSimulator
 
             string metricsJsonData = $"{{\r\n  \"Inputs\": {{\r\n    \"input1\": [\r\n      {{\r\n        \"UPF-CPU\": {cpuUtil},\r\n        \"UPF-Mem\": {memUtil},\r\n        \"UPF_SessionEstablishmentRejects_Overload\": {sessEstRejectsOvld},\r\n        \"UPF_SessionEstablishmentFailed_Fastpath_timeout\": {sessionEstFailFpTimeout}\r\n      }}\r\n    ]\r\n  }},\r\n  \"GlobalParameters\": {{}}\r\n}}";
             Console.WriteLine(metricsJsonData);
-            string uri = "http://localhost:7020/api/test-aiml";
-            //string uri = "https://nssmf.azurewebsites.net/subscriptions/ecd77763-10fa-495b-963c-788721bde427/resourceGroups/TestingRG/nssmfs/myNssmf/ObjectManagement/v1/SliceProfiles";
+            //string uri = "http://localhost:7020/api/test-aiml";
+            string uri = "http://e937ab94-1c7d-474b-8d3e-586e1a314acb.eastus2.azurecontainer.io/score";
 
             string authToken = "f9TujjzqyegqBb4m9xfdzo3HDObVOvGb";
 
@@ -453,7 +456,7 @@ namespace ResourceSimulator
                 //Read back the answer from server
                 var responseString = await response.Content.ReadAsStringAsync();
 
-                Console.WriteLine("Received suyccess response");
+                Console.WriteLine("Received success response");
 
                 Console.WriteLine(responseString);
 
@@ -477,8 +480,8 @@ namespace ResourceSimulator
 
         private static async Task<int> CreateTheSlice()
         {
-            string uri = "http://localhost:7020/api/create-slice";
-            //string uri = "https://nssmf.azurewebsites.net/subscriptions/ecd77763-10fa-495b-963c-788721bde427/resourceGroups/TestingRG/nssmfs/myNssmf/ObjectManagement/v1/SliceProfiles";
+            //string uri = "http://localhost:7020/api/create-slice";
+            string uri = "https://resourcesimulator20220918231716.azurewebsites.net/api/create-slice";
             //POST the object to the specified URI 
             var response = await clientNssmf.PostAsync(uri, new StringContent("{}"));
 
@@ -491,8 +494,8 @@ namespace ResourceSimulator
 
         private static async Task<int> DeleteTheSlice()
         {
-            string uri = "http://localhost:7020/api/delete-slice";
-            //string uri = "https://nssmf.azurewebsites.net/subscriptions/ecd77763-10fa-495b-963c-788721bde427/resourceGroups/TestingRG/nssmfs/myNssmf/ObjectManagement/v1/SliceProfiles";
+            //string uri = "http://localhost:7020/api/delete-slice";
+            string uri = "https://resourcesimulator20220918231716.azurewebsites.net/api/delete-slice";
             //POST the object to the specified URI 
             var response = await clientNssmf.DeleteAsync(uri);
 
