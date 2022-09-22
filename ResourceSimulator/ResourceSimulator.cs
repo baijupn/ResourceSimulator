@@ -207,7 +207,7 @@ namespace ResourceSimulator
         {
             log.LogInformation("Get Resource received.");
             var resourceCount = getIntValFromFile("resourceCount.txt");
-            
+
             return (ActionResult)new OkObjectResult($"ResourceSimulator count:  {resourceCount}");
 
         }
@@ -402,18 +402,18 @@ namespace ResourceSimulator
                 sessionEstFailFpTimeout = (int)((cpuUtil - 60.0) * 33);
             }
 
-            var ret = SendMetrics(cpuUtil, memUtil, sessEstRejectsOvld, sessionEstFailFpTimeout);
+            var ret = SendMetrics(cpuUtil, memUtil, sessEstRejectsOvld, sessionEstFailFpTimeout, log);
 
             if (ret.Result == 1)
             {
                 log.LogInformation("sending create-slice request");
-                var cRet = CreateTheSlice();
-                
+                var cRet = CreateTheSlice(log);
+
             }
             else if (ret.Result == 2)
             {
                 log.LogInformation("sending create-slice request");
-                var dRet = DeleteTheSlice();
+                var dRet = DeleteTheSlice(log);
             }
 
         }
@@ -423,9 +423,10 @@ namespace ResourceSimulator
         private static readonly HttpClient clientAiMl = new HttpClient();
         private static readonly HttpClient clientNssmf = new HttpClient();
 
-        private static async Task<int> SendMetrics(double cpuUtil, double memUtil, int sessEstRejectsOvld, int sessionEstFailFpTimeout)
+        private static async Task<int> SendMetrics(double cpuUtil, double memUtil, int sessEstRejectsOvld, int sessionEstFailFpTimeout, ILogger log)
         {
-            Console.WriteLine("Sending metric data");
+            //Console.WriteLine("Sending metric data");
+            log.LogInformation("Sending metric data");
             long timeVal = getNextTimeVal();
             DateTimeOffset dateTimeOffSet = DateTimeOffset.FromUnixTimeSeconds(timeVal);
             DateTime datTime = dateTimeOffSet.DateTime;
@@ -434,7 +435,8 @@ namespace ResourceSimulator
             //string metricsData = $"{{\r\n    \"data\": [\r\n        {{\r\n            \"UPF-CPU\": {cpuUtil},\r\n            \"UPF-Mem\": {memUtil},\r\n            \"UPF_SessionEstablishmentRejects_Overload\": {sessEstRejectsOvld},\r\n            \"UPF_SessionEstablishmentFailed_Fastpath_timeout\": {sessionEstFailFpTimeout}\r\n        }}\r\n    ]\r\n}}";
 
             string metricsJsonData = $"{{\r\n  \"Inputs\": {{\r\n    \"input1\": [\r\n      {{\r\n        \"UPF-CPU\": {cpuUtil},\r\n        \"UPF-Mem\": {memUtil},\r\n        \"UPF_SessionEstablishmentRejects_Overload\": {sessEstRejectsOvld},\r\n        \"UPF_SessionEstablishmentFailed_Fastpath_timeout\": {sessionEstFailFpTimeout}\r\n      }}\r\n    ]\r\n  }},\r\n  \"GlobalParameters\": {{}}\r\n}}";
-            Console.WriteLine(metricsJsonData);
+            //Console.WriteLine(metricsJsonData);
+            log.LogInformation($"{metricsJsonData}");
             //string uri = "http://localhost:7020/api/test-aiml";
             string uri = "http://e937ab94-1c7d-474b-8d3e-586e1a314acb.eastus2.azurecontainer.io/score";
 
@@ -449,16 +451,18 @@ namespace ResourceSimulator
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
             request.Content = new StringContent(metricsJsonData, Encoding.UTF8, "application/json");
             var response = await clientAiMl.SendAsync(request);
-            
+
             var ret = 0;
             if (response.IsSuccessStatusCode)
             {
                 //Read back the answer from server
                 var responseString = await response.Content.ReadAsStringAsync();
 
-                Console.WriteLine("Received success response");
+                //Console.WriteLine("Received success response");
+                log.LogInformation("Received success response");
 
-                Console.WriteLine(responseString);
+                //Console.WriteLine(responseString);
+                log.LogInformation($"{responseString}");
 
                 if (responseString.Contains("Create"))
                 {
@@ -472,13 +476,14 @@ namespace ResourceSimulator
             }
             else
             {
-                Console.WriteLine("Received error response");
+                //Console.WriteLine("Received error response");
+                log.LogInformation("Received error response");
             }
 
             return ret;
         }
 
-        private static async Task<int> CreateTheSlice()
+        private static async Task<int> CreateTheSlice(ILogger log)
         {
             //string uri = "http://localhost:7020/api/create-slice";
             string uri = "https://resourcesimulator20220918231716.azurewebsites.net/api/create-slice";
@@ -488,11 +493,12 @@ namespace ResourceSimulator
             //Read back the answer from server
             var responseString = await response.Content.ReadAsStringAsync();
 
-            Console.WriteLine(responseString);
+            //Console.WriteLine(responseString);
+            log.LogInformation($"{responseString}");
             return 1;
         }
 
-        private static async Task<int> DeleteTheSlice()
+        private static async Task<int> DeleteTheSlice(ILogger log)
         {
             //string uri = "http://localhost:7020/api/delete-slice";
             string uri = "https://resourcesimulator20220918231716.azurewebsites.net/api/delete-slice";
@@ -502,7 +508,8 @@ namespace ResourceSimulator
             //Read back the answer from server
             var responseString = await response.Content.ReadAsStringAsync();
 
-            Console.WriteLine(responseString);
+            //Console.WriteLine(responseString);
+            log.LogInformation($"{responseString}");
             return 1;
         }
 
@@ -625,7 +632,7 @@ namespace ResourceSimulator
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
         {
-            var sliceCount = CreateTheSlice("slice.txt");
+            var sliceCount = CreateTheSlice("slice.txt", log);
             log.LogInformation($"Create Slice: Current Slice Count is {sliceCount.Result}");
             return (ActionResult)new OkObjectResult("New Slice Created.");
         }
@@ -633,7 +640,7 @@ namespace ResourceSimulator
         //HttpClient should be instancied once and not be disposed 
         private static readonly HttpClient client = new HttpClient();
 
-        private static async Task<int> CreateTheSlice(string fileName)
+        private static async Task<int> CreateTheSlice(string fileName, ILogger log)
         {
             var folder = Environment.ExpandEnvironmentVariables(@"%HOME%\data\MyFunctionAppData");
             var fullPath = Path.Combine(folder, fileName);
@@ -676,7 +683,8 @@ namespace ResourceSimulator
             //Read back the answer from server
             var responseString = await response.Content.ReadAsStringAsync();
 
-            Console.WriteLine(responseString);
+            //Console.WriteLine(responseString);
+            log.LogInformation($"{responseString}");
 
             File.WriteAllText(fullPath, (sliceCount).ToString());
             return sliceCount;
@@ -694,7 +702,7 @@ namespace ResourceSimulator
             [HttpTrigger(AuthorizationLevel.Anonymous, "delete", "delete", Route = null)] HttpRequest req,
             ILogger log)
         {
-            var deleted = DeleteTheSlice("slice.txt");
+            var deleted = DeleteTheSlice("slice.txt", log);
             if (deleted.Result)
             {
                 log.LogInformation("Delete Slice: Slice Deleted.");
@@ -710,7 +718,7 @@ namespace ResourceSimulator
         //HttpClient should be instancied once and not be disposed 
         private static readonly HttpClient client = new HttpClient();
 
-        private static async Task<bool> DeleteTheSlice(string fileName)
+        private static async Task<bool> DeleteTheSlice(string fileName, ILogger log)
         {
             var folder = Environment.ExpandEnvironmentVariables(@"%HOME%\data\MyFunctionAppData");
             var fullPath = Path.Combine(folder, fileName);
@@ -731,7 +739,8 @@ namespace ResourceSimulator
                     //Read back the answer from server
                     var responseString = await response.Content.ReadAsStringAsync();
 
-                    Console.WriteLine(responseString);
+                    //Console.WriteLine(responseString);
+                    log.LogInformation($"{responseString}");
                     File.WriteAllText(fullPath, (--sliceCount).ToString());
                     return true;
                 }
