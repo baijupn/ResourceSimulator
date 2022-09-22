@@ -34,7 +34,7 @@ namespace ResourceSimulator
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
         {
-            log.LogInformation("Create Resource processed.");
+            log.LogInformation("Create Resource received.");
             var resourceCount = getIntValFromFile("resourceCount.txt");
 
             log.LogInformation($"current resource count: {resourceCount}");
@@ -70,6 +70,7 @@ namespace ResourceSimulator
             writeFloatValToFile("cpuUtil.txt", cpuUtil);
             log.LogInformation($"new resource count: {resourceCount}");
             log.LogInformation($"New cpu util: {cpuUtil}");
+            log.LogInformation("Create Resource processed.");
             return (ActionResult)new OkObjectResult("Create Resource processed.");
 
 
@@ -270,7 +271,7 @@ namespace ResourceSimulator
             [HttpTrigger(AuthorizationLevel.Anonymous, "delete", "delete", Route = null)] HttpRequest req,
             ILogger log)
         {
-            log.LogInformation("Delete Resource processed.");
+            log.LogInformation("Delete Resource received.");
             var resourceCount = getIntValFromFile("resourceCount.txt");
             log.LogInformation($"Delete resource: current resource count: {resourceCount}");
             if (resourceCount <= 0)
@@ -291,6 +292,7 @@ namespace ResourceSimulator
             }
             writeFloatValToFile("cpuUtil.txt", cpuUtil);
             log.LogInformation($"New cpu util: {cpuUtil}");
+            log.LogInformation("Delete Resource processed.");
             return (ActionResult)new OkObjectResult("Delete Resource processed.");
         }
 
